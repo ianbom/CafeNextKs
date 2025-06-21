@@ -18,6 +18,8 @@ app.get('/', (req, res) => {
    res.send('Order Cafe Coyy');
 });
 
+
+
 app.use('/api/categories', categoryRoutes);
 app.use('/api/menus', menuRoutes);
 app.use('/api/orders', orderRoutes);
