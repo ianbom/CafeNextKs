@@ -1,0 +1,126 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id       Int     @id @default(autoincrement())
+  name     String
+  email    String  @unique
+  password String
+  isAdmin  Boolean @map("is_admin") // Menyesuaikan nama kolom di DB jika berbeda
+    createdAt      DateTime     @map("created_at") @default(now())  
+  updatedAt      DateTime     @map("updatedAt") @default(now()) @updatedAt
+}
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String? @db.Text // String? berarti opsional, @db.Text untuk tipe TEXT MySQL
+    createdAt      DateTime     @map("created_at") @default(now())  
+  updatedAt      DateTime     @map("updatedAt") @default(now()) @updatedAt
+
+  menus Menu[] // Hubungan satu-ke-banyak dengan Menu
+}
+
+model Menu {
+  id             Int          @id @default(autoincrement())
+  categoryId     Int          @map("category_id")
+  name           String       @unique
+  price          Int
+  isAvailable    Boolean      @map("is_available") @default(true)
+  estimatedTime  Int          @map("estimated_time")
+  thumbnailUrl   String
+  createdAt      DateTime     @map("created_at") @default(now())  
+  updatedAt      DateTime     @map("updatedAt") @default(now()) @updatedAt
+  
+  category       Category     @relation(fields: [categoryId], references: [id])
+  images         MenuImage[]  // Hubungan satu-ke-banyak dengan MenuImage
+  orderItems     OrderItem[]  // Hubungan satu-ke-banyak dengan OrderItem
+}
+
+model MenuImage {
+  id       Int    @id @default(autoincrement())
+  menuId   Int    @map("menu_id")
+  imageUrl String @map("image_url") @db.VarChar(255) // Sesuaikan panjang jika perlu
+  createdAt      DateTime     @map("created_at") @default(now())  
+  updatedAt      DateTime     @map("updatedAt") @default(now()) @updatedAt
+  menu     Menu   @relation(fields: [menuId], references: [id])
+}
+
+
+
+model Order {
+  id             Int       @id @default(autoincrement())
+  customerName   String?    @map("customer_name")
+  customerPhone  String?    @map("customer_phone") @db.VarChar(20) // Sesuaikan panjang jika perlu
+  tableNumber    Int?       @map("table_number")
+  totalAmount    Int?       @map("total_amount")
+  tax            Int?
+  serviceCharge  Int?       @map("service_charge")
+  orderStatus    OrderStatus? @map("order_status") @default(pending) // Enum untuk status
+  estimatedTime  Int?      @map("estimated_time") // Opsional karena dihitung
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  payments       Payment[]   // Hubungan satu-ke-banyak dengan Payment
+  orderItems     OrderItem[] // Hubungan satu-ke-banyak dengan OrderItem
+}
+
+model Payment {
+  id                      Int      @id @default(autoincrement())
+  orderId                 Int?      @map("order_id")
+  amount                  Int?
+  paymentStatus           PaymentStatus? @map("payment_status")
+  paymentType             String?  @map("payment_type")
+  paidAt                  DateTime? @map("paid_at")
+  cancelledAt             DateTime? @map("cancelled_at")
+  expiredAt               DateTime? @map("expired_at")
+  midtransOrderId         String?  @map("midtrans_order_id") @unique // Unique karena Midtrans Order ID harus unik
+  midtransSnapToken       String?  @map("midtrans_snap_token")
+  midtransTransactionId   String?  @map("midtrans_transaction_id") @unique
+  midtransResponse        Json?    @map("midtrans_response")
+  createdAt      DateTime     @map("created_at") @default(now())  
+  updatedAt      DateTime     @map("updatedAt") @default(now()) @updatedAt
+
+  order                   Order?    @relation(fields: [orderId], references: [id])
+}
+
+model OrderItem {
+  id        Int    @id @default(autoincrement())
+  orderId   Int?    @map("order_id")
+  menuId    Int?    @map("menu_id")
+  quantity  Int?
+  price     Int?
+  notes     String? @db.Text // String? berarti opsional
+  subtotal  Int?
+  createdAt      DateTime     @map("created_at") @default(now())  
+  updatedAt      DateTime     @map("updatedAt") @default(now()) @updatedAt
+  
+  order     Order?  @relation(fields: [orderId], references: [id])
+  menu      Menu?   @relation(fields: [menuId], references: [id])
+}
+
+// Enums untuk status
+enum OrderStatus {
+  pending
+  preparing
+  ready
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  cancelled
+  expired
+}
